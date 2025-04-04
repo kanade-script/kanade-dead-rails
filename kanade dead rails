@@ -1,0 +1,723 @@
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local backpack = player:WaitForChild("Backpack")
+
+-- Настройки
+local ITEM_TAGS = {"Medkit", "Ammo", "Weapon", "Armor", "Fuel", "Trash", "Corpse", "Body", 
+                  "Bandage", "Revolver", "Junk", "Turret", "Bonds"}
+local ZOMBIE_TAG = "Zombie"
+local FLASHLIGHT_COLOR = Color3.fromRGB(255, 240, 200)
+local TELEPORT_SPEED = 16 -- Скорость перемещения к тиммейту
+
+-- Создаем интерфейс
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KanadeMenu"
+screenGui.Parent = player.PlayerGui
+screenGui.ResetOnSpawn = false
+
+-- Создаем кнопку для открытия меню
+local openButton = Instance.new("ImageButton")
+openButton.Name = "OpenMenuButton"
+openButton.Size = UDim2.new(0, 50, 0, 50)
+openButton.Position = UDim2.new(1, -60, 0.5, -25)
+openButton.AnchorPoint = Vector2.new(1, 0.5)
+openButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+openButton.BackgroundTransparency = 0.5
+openButton.AutoButtonColor = false
+openButton.Parent = screenGui
+
+-- Стилизуем кнопку
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = openButton
+
+local icon = Instance.new("ImageLabel")
+icon.Name = "Icon"
+icon.Size = UDim2.new(0.6, 0, 0.6, 0)
+icon.Position = UDim2.new(0.2, 0, 0.2, 0)
+icon.BackgroundTransparency = 1
+icon.Image = "rbxassetid://7072718362" -- Иконка меню
+icon.Parent = openButton
+
+-- Анимация кнопки при наведении
+openButton.MouseEnter:Connect(function()
+    TweenService:Create(openButton, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0,
+        Rotation = 90
+    }):Play()
+end)
+
+openButton.MouseLeave:Connect(function()
+    TweenService:Create(openButton, TweenInfo.new(0.2), {
+        BackgroundTransparency = 0.5,
+        Rotation = 0
+    }):Play()
+end)
+
+-- Основное меню
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 500)
+frame.Position = UDim2.new(0.5, -150, 0.5, -250)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+frame.BorderSizePixel = 0
+frame.Visible = false
+frame.ClipsDescendants = true
+frame.Parent = screenGui
+
+-- Скругление углов меню
+local menuCorner = Instance.new("UICorner")
+menuCorner.CornerRadius = UDim.new(0, 12)
+menuCorner.Parent = frame
+
+-- Заголовок меню
+local title = Instance.new("TextLabel")
+title.Text = "BY KANADE DR"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Parent = frame
+
+-- Контейнер для прокрутки
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, -20, 1, -130)
+scrollFrame.Position = UDim2.new(0, 10, 0, 50)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollFrame.Parent = frame
+
+-- Чекбокс "Zombie Indicator"
+local zombieCheckbox = Instance.new("TextButton")
+zombieCheckbox.Text = "  Zombie Indicator"
+zombieCheckbox.Size = UDim2.new(1, 0, 0, 40)
+zombieCheckbox.Position = UDim2.new(0, 0, 0, 0)
+zombieCheckbox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+zombieCheckbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+zombieCheckbox.Font = Enum.Font.Gotham
+zombieCheckbox.TextSize = 14
+zombieCheckbox.TextXAlignment = Enum.TextXAlignment.Left
+zombieCheckbox.AutoButtonColor = false
+zombieCheckbox.Parent = scrollFrame
+
+local zombieCheckIcon = Instance.new("TextLabel")
+zombieCheckIcon.Text = "□"
+zombieCheckIcon.Size = UDim2.new(0, 20, 0, 20)
+zombieCheckIcon.Position = UDim2.new(1, -25, 0.5, -10)
+zombieCheckIcon.BackgroundTransparency = 1
+zombieCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+zombieCheckIcon.Font = Enum.Font.GothamBold
+zombieCheckIcon.TextSize = 18
+zombieCheckIcon.Parent = zombieCheckbox
+
+-- Чекбокс "Item Indicator"
+local itemCheckbox = Instance.new("TextButton")
+itemCheckbox.Text = "  Item Indicator"
+itemCheckbox.Size = UDim2.new(1, 0, 0, 40)
+itemCheckbox.Position = UDim2.new(0, 0, 0, 50)
+itemCheckbox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+itemCheckbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+itemCheckbox.Font = Enum.Font.Gotham
+itemCheckbox.TextSize = 14
+itemCheckbox.TextXAlignment = Enum.TextXAlignment.Left
+itemCheckbox.AutoButtonColor = false
+itemCheckbox.Parent = scrollFrame
+
+local itemCheckIcon = Instance.new("TextLabel")
+itemCheckIcon.Text = "□"
+itemCheckIcon.Size = UDim2.new(0, 20, 0, 20)
+itemCheckIcon.Position = UDim2.new(1, -25, 0.5, -10)
+itemCheckIcon.BackgroundTransparency = 1
+itemCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+itemCheckIcon.Font = Enum.Font.GothamBold
+itemCheckIcon.TextSize = 18
+itemCheckIcon.Parent = itemCheckbox
+
+-- Чекбокс "Flashlight"
+local flashlightCheckbox = Instance.new("TextButton")
+flashlightCheckbox.Text = "  Flashlight"
+flashlightCheckbox.Size = UDim2.new(1, 0, 0, 40)
+flashlightCheckbox.Position = UDim2.new(0, 0, 0, 100)
+flashlightCheckbox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+flashlightCheckbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+flashlightCheckbox.Font = Enum.Font.Gotham
+flashlightCheckbox.TextSize = 14
+flashlightCheckbox.TextXAlignment = Enum.TextXAlignment.Left
+flashlightCheckbox.AutoButtonColor = false
+flashlightCheckbox.Parent = scrollFrame
+
+local flashlightCheckIcon = Instance.new("TextLabel")
+flashlightCheckIcon.Text = "□"
+flashlightCheckIcon.Size = UDim2.new(0, 20, 0, 20)
+flashlightCheckIcon.Position = UDim2.new(1, -25, 0.5, -10)
+flashlightCheckIcon.BackgroundTransparency = 1
+flashlightCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+flashlightCheckIcon.Font = Enum.Font.GothamBold
+flashlightCheckIcon.TextSize = 18
+flashlightCheckIcon.Parent = flashlightCheckbox
+
+-- Чекбокс "Sigareta"
+local cigaretteCheckbox = Instance.new("TextButton")
+cigaretteCheckbox.Text = "  Sigareta"
+cigaretteCheckbox.Size = UDim2.new(1, 0, 0, 40)
+cigaretteCheckbox.Position = UDim2.new(0, 0, 0, 150)
+cigaretteCheckbox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+cigaretteCheckbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+cigaretteCheckbox.Font = Enum.Font.Gotham
+cigaretteCheckbox.TextSize = 14
+cigaretteCheckbox.TextXAlignment = Enum.TextXAlignment.Left
+cigaretteCheckbox.AutoButtonColor = false
+cigaretteCheckbox.Parent = scrollFrame
+
+local cigaretteCheckIcon = Instance.new("TextLabel")
+cigaretteCheckIcon.Text = "□"
+cigaretteCheckIcon.Size = UDim2.new(0, 20, 0, 20)
+cigaretteCheckIcon.Position = UDim2.new(1, -25, 0.5, -10)
+cigaretteCheckIcon.BackgroundTransparency = 1
+cigaretteCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+cigaretteCheckIcon.Font = Enum.Font.GothamBold
+cigaretteCheckIcon.TextSize = 18
+cigaretteCheckIcon.Parent = cigaretteCheckbox
+
+-- Кнопка "Teleport Team"
+local teleportButton = Instance.new("TextButton")
+teleportButton.Text = "  Teleport Team"
+teleportButton.Size = UDim2.new(1, 0, 0, 40)
+teleportButton.Position = UDim2.new(0, 0, 0, 200)
+teleportButton.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+teleportButton.Font = Enum.Font.Gotham
+teleportButton.TextSize = 14
+teleportButton.TextXAlignment = Enum.TextXAlignment.Left
+teleportButton.AutoButtonColor = false
+teleportButton.Parent = scrollFrame
+
+local teleportIcon = Instance.new("TextLabel")
+teleportIcon.Text = "↗"
+teleportIcon.Size = UDim2.new(0, 20, 0, 20)
+teleportIcon.Position = UDim2.new(1, -25, 0.5, -10)
+teleportIcon.BackgroundTransparency = 1
+teleportIcon.TextColor3 = Color3.fromRGB(200, 255, 200)
+teleportIcon.Font = Enum.Font.GothamBold
+teleportIcon.TextSize = 18
+teleportIcon.Parent = teleportButton
+
+-- Чекбокс "Speed Bypass"
+local speedBypassCheckbox = Instance.new("TextButton")
+speedBypassCheckbox.Text = "  Speed Bypass"
+speedBypassCheckbox.Size = UDim2.new(1, 0, 0, 40)
+speedBypassCheckbox.Position = UDim2.new(0, 0, 0, 250)
+speedBypassCheckbox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+speedBypassCheckbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedBypassCheckbox.Font = Enum.Font.Gotham
+speedBypassCheckbox.TextSize = 14
+speedBypassCheckbox.TextXAlignment = Enum.TextXAlignment.Left
+speedBypassCheckbox.AutoButtonColor = false
+speedBypassCheckbox.Parent = scrollFrame
+
+local speedBypassCheckIcon = Instance.new("TextLabel")
+speedBypassCheckIcon.Text = "□"
+speedBypassCheckIcon.Size = UDim2.new(0, 20, 0, 20)
+speedBypassCheckIcon.Position = UDim2.new(1, -25, 0.5, -10)
+speedBypassCheckIcon.BackgroundTransparency = 1
+speedBypassCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+speedBypassCheckIcon.Font = Enum.Font.GothamBold
+speedBypassCheckIcon.TextSize = 18
+speedBypassCheckIcon.Parent = speedBypassCheckbox
+
+-- Состояния
+local zombieActive = false
+local itemActive = false
+local flashlightActive = false
+local cigaretteActive = false
+local speedBypassActive = false
+local currentFlashlight = nil
+local currentCigarette = nil
+local isTeleporting = false
+
+-- Функция создания метки
+local function createLabel(parent, text, color, offset)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ObjectLabel"
+    billboard.Adornee = parent
+    billboard.Size = UDim2.new(0, 100, 0, 20)
+    billboard.StudsOffset = offset or Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.LightInfluence = 0
+    billboard.MaxDistance = 500
+    billboard.Enabled = true
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Text = text
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = color
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 14
+    textLabel.Parent = billboard
+
+    return billboard
+end
+
+-- Функция создания фонарика
+local function createFlashlight()
+    local flashlight = Instance.new("Tool")
+    flashlight.Name = "Flashlight"
+    flashlight.CanBeDropped = false
+    
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(0.3, 1, 0.3)
+    handle.Transparency = 0.5
+    handle.Color = Color3.fromRGB(200, 200, 200)
+    handle.Parent = flashlight
+    
+    local pointLight = Instance.new("PointLight")
+    pointLight.Brightness = 2
+    pointLight.Range = 25
+    pointLight.Color = FLASHLIGHT_COLOR
+    pointLight.Parent = handle
+    
+    local spotLight = Instance.new("SpotLight")
+    spotLight.Brightness = 3
+    spotLight.Range = 30
+    spotLight.Angle = 70
+    spotLight.Color = FLASHLIGHT_COLOR
+    spotLight.Parent = handle
+    
+    flashlight.Equipped:Connect(function()
+        pointLight.Enabled = true
+        spotLight.Enabled = true
+    end)
+    
+    flashlight.Unequipped:Connect(function()
+        pointLight.Enabled = false
+        spotLight.Enabled = false
+    end)
+    
+    return flashlight
+end
+
+-- Функция создания сигареты
+local function createCigarette()
+    local cigarette = Instance.new("Tool")
+    cigarette.Name = "Sigareta"
+    cigarette.CanBeDropped = false
+    
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(0.2, 1, 0.2)
+    handle.Transparency = 0.5
+    handle.Color = Color3.fromRGB(150, 150, 150)
+    handle.Parent = cigarette
+    
+    -- Дым
+    local smoke = Instance.new("ParticleEmitter")
+    smoke.LightEmission = 0.5
+    smoke.Color = ColorSequence.new(Color3.new(0.8, 0.8, 0.8))
+    smoke.Size = NumberSequence.new(0.2, 0.5)
+    smoke.Texture = "rbxassetid://241603427"
+    smoke.Lifetime = NumberRange.new(2, 3)
+    smoke.Rate = 10
+    smoke.Speed = NumberRange.new(0.5)
+    smoke.Rotation = NumberRange.new(0, 360)
+    smoke.VelocitySpread = 10
+    smoke.Enabled = false
+    smoke.Parent = handle
+    
+    -- Обработчик ЛКМ
+    cigarette.Activated:Connect(function()
+        smoke.Enabled = not smoke.Enabled
+    end)
+    
+    -- Включение/выключение при экипировке
+    cigarette.Equipped:Connect(function()
+        handle.Transparency = 0
+    end)
+    
+    cigarette.Unequipped:Connect(function()
+        handle.Transparency = 0.5
+        smoke.Enabled = false
+    end)
+    
+    return cigarette
+end
+
+-- Функция для меток зомби
+local function toggleZombieLabels(enable)
+    zombieActive = enable
+    for _, npc in ipairs(workspace:GetDescendants()) do
+        if npc:FindFirstChild("Humanoid") or string.find(string.lower(npc.Name), string.lower(ZOMBIE_TAG)) then
+            local head = npc:FindFirstChild("Head") or npc.PrimaryPart
+            if head then
+                local label = head:FindFirstChild("ZombieLabel")
+                if enable and not label then
+                    createLabel(head, "ZOMBIE", Color3.new(1, 0, 0), Vector3.new(0, 2.5, 0)).Parent = head
+                elseif not enable and label then
+                    label:Destroy()
+                end
+            end
+        end
+    end
+end
+
+-- Функция для меток предметов
+local function toggleItemLabels(enable)
+    itemActive = enable
+    for _, item in ipairs(workspace:GetDescendants()) do
+        if item:IsA("BasePart") or item:IsA("Model") then
+            for _, tag in pairs(ITEM_TAGS) do
+                if string.find(string.lower(item.Name), string.lower(tag)) then
+                    local part = item:IsA("Model") and item.PrimaryPart or item
+                    if part then
+                        local label = part:FindFirstChild("ItemLabel")
+                        if enable and not label then
+                            createLabel(part, tag:upper(), Color3.new(0, 1, 1)).Parent = part
+                        elseif not enable and label then
+                            label:Destroy()
+                        end
+                    end
+                    break
+                end
+            end
+        end
+    end
+end
+
+-- Функция для фонарика
+local function toggleFlashlight(enable)
+    flashlightActive = enable
+    if enable then
+        currentFlashlight = createFlashlight()
+        currentFlashlight.Parent = backpack
+        
+        player.CharacterAdded:Connect(function(char)
+            if flashlightActive then
+                currentFlashlight = createFlashlight()
+                currentFlashlight.Parent = backpack
+            end
+        end)
+    elseif currentFlashlight then
+        currentFlashlight:Destroy()
+        currentFlashlight = nil
+    end
+end
+
+-- Функция для сигареты
+local function toggleCigarette(enable)
+    cigaretteActive = enable
+    if enable then
+        currentCigarette = createCigarette()
+        currentCigarette.Parent = backpack
+        
+        player.CharacterAdded:Connect(function(char)
+            if cigaretteActive then
+                currentCigarette = createCigarette()
+                currentCigarette.Parent = backpack
+            end
+        end)
+    elseif currentCigarette then
+        currentCigarette:Destroy()
+        currentCigarette = nil
+    end
+end
+
+-- Функция Speed Bypass (переключение скорости)
+local function toggleSpeedBypass(enable)
+    speedBypassActive = enable
+    if enable then
+        local speeds = {16, 20} -- Скорости для переключения
+        local currentIndex = 1
+        
+        while speedBypassActive and humanoid do
+            humanoid.WalkSpeed = speeds[currentIndex]
+            currentIndex = currentIndex % #speeds + 1
+            task.wait(1) -- Переключаем каждую секунду
+        end
+        
+        -- Возвращаем стандартную скорость, если отключено
+        if humanoid then
+            humanoid.WalkSpeed = 16
+        end
+    end
+end
+
+-- Функция телепортации к команде (плавное перемещение)
+local function teleportToTeam()
+    if isTeleporting then return end
+    isTeleporting = true
+    
+    local humanoidRootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    if not humanoidRootPart or not humanoid then 
+        isTeleporting = false
+        return 
+    end
+    
+    -- Получаем всех игроков (кроме себя)
+    local teammates = {}
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if otherRoot then
+                table.insert(teammates, otherRoot)
+            end
+        end
+    end
+    
+    if #teammates > 0 then
+        -- Находим ближайшего тиммейта
+        local closestPlayer = nil
+        local closestDistance = math.huge
+        
+        for _, teammate in ipairs(teammates) do
+            local distance = (humanoidRootPart.Position - teammate.Position).Magnitude
+            if distance < closestDistance then
+                closestDistance = distance
+                closestPlayer = teammate
+            end
+        end
+        
+        if closestPlayer then
+            -- Эффект начала телепортации
+            local startEffect = Instance.new("ParticleEmitter")
+            startEffect.Texture = "rbxassetid://242487987"
+            startEffect.LightEmission = 1
+            startEffect.Size = NumberSequence.new(0.5, 1.5)
+            startEffect.Lifetime = NumberRange.new(0.5, 1)
+            startEffect.Speed = NumberRange.new(5, 10)
+            startEffect.EmissionDirection = Enum.NormalId.Top
+            startEffect.Parent = humanoidRootPart
+            game:GetService("Debris"):AddItem(startEffect, 1)
+            
+            -- Плавное перемещение к тиммейту
+            local startTime = tick()
+            local startPos = humanoidRootPart.Position
+            local endPos = closestPlayer.Position
+            local distance = (startPos - endPos).Magnitude
+            local duration = distance / TELEPORT_SPEED
+            
+            local connection
+            connection = RunService.Heartbeat:Connect(function()
+                local elapsed = tick() - startTime
+                local progress = math.min(elapsed / duration, 1)
+                
+                if progress < 1 then
+                    local newPos = startPos:Lerp(endPos, progress)
+                    humanoidRootPart.CFrame = CFrame.new(newPos) * (humanoidRootPart.CFrame - humanoidRootPart.Position)
+                else
+                    -- Завершение телепортации
+                    humanoidRootPart.CFrame = CFrame.new(endPos) * (humanoidRootPart.CFrame - humanoidRootPart.Position)
+                    
+                    -- Эффект завершения
+                    local endEffect = Instance.new("ParticleEmitter")
+                    endEffect.Texture = "rbxassetid://242487987"
+                    endEffect.LightEmission = 1
+                    endEffect.Size = NumberSequence.new(0.5, 1.5)
+                    endEffect.Lifetime = NumberRange.new(0.5, 1)
+                    endEffect.Speed = NumberRange.new(5, 10)
+                    endEffect.EmissionDirection = Enum.NormalId.Top
+                    endEffect.Parent = humanoidRootPart
+                    game:GetService("Debris"):AddItem(endEffect, 1)
+                    
+                    connection:Disconnect()
+                    isTeleporting = false
+                end
+            end)
+        else
+            isTeleporting = false
+        end
+    else
+        -- Уведомление если нет тиммейтов
+        local notification = Instance.new("TextLabel")
+        notification.Text = "No teammates found!"
+        notification.Size = UDim2.new(0, 200, 0, 30)
+        notification.Position = UDim2.new(0.5, -100, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        notification.TextColor3 = Color3.fromRGB(255, 100, 100)
+        notification.Font = Enum.Font.Gotham
+        notification.TextSize = 14
+        notification.Parent = screenGui
+        
+        game:GetService("TweenService"):Create(
+            notification,
+            TweenInfo.new(0.5),
+            {TextTransparency = 1}
+        ):Play()
+        
+        game:GetService("Debris"):AddItem(notification, 0.5)
+        isTeleporting = false
+    end
+end
+
+-- Обработчики чекбоксов
+zombieCheckbox.MouseButton1Click:Connect(function()
+    zombieActive = not zombieActive
+    if zombieActive then
+        zombieCheckIcon.Text = "✓"
+        zombieCheckIcon.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        zombieCheckIcon.Text = "□"
+        zombieCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+    toggleZombieLabels(zombieActive)
+end)
+
+itemCheckbox.MouseButton1Click:Connect(function()
+    itemActive = not itemActive
+    if itemActive then
+        itemCheckIcon.Text = "✓"
+        itemCheckIcon.TextColor3 = Color3.fromRGB(0, 255, 255)
+    else
+        itemCheckIcon.Text = "□"
+        itemCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+    toggleItemLabels(itemActive)
+end)
+
+flashlightCheckbox.MouseButton1Click:Connect(function()
+    flashlightActive = not flashlightActive
+    if flashlightActive then
+        flashlightCheckIcon.Text = "✓"
+        flashlightCheckIcon.TextColor3 = Color3.fromRGB(255, 255, 0)
+    else
+        flashlightCheckIcon.Text = "□"
+        flashlightCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+    toggleFlashlight(flashlightActive)
+end)
+
+cigaretteCheckbox.MouseButton1Click:Connect(function()
+    cigaretteActive = not cigaretteActive
+    if cigaretteActive then
+        cigaretteCheckIcon.Text = "✓"
+        cigaretteCheckIcon.TextColor3 = Color3.fromRGB(150, 150, 150)
+    else
+        cigaretteCheckIcon.Text = "□"
+        cigaretteCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+    toggleCigarette(cigaretteActive)
+end)
+
+-- Обработчик Speed Bypass
+speedBypassCheckbox.MouseButton1Click:Connect(function()
+    speedBypassActive = not speedBypassActive
+    if speedBypassActive then
+        speedBypassCheckIcon.Text = "✓"
+        speedBypassCheckIcon.TextColor3 = Color3.fromRGB(0, 200, 255)
+        toggleSpeedBypass(true)
+    else
+        speedBypassCheckIcon.Text = "□"
+        speedBypassCheckIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+        toggleSpeedBypass(false)
+    end
+end)
+
+-- Обработчик кнопки телепортации
+teleportButton.MouseButton1Click:Connect(function()
+    teleportToTeam()
+    
+    -- Анимация нажатия
+    TweenService:Create(
+        teleportButton,
+        TweenInfo.new(0.1),
+        {BackgroundColor3 = Color3.fromRGB(0, 100, 0)}
+    ):Play()
+    task.wait(0.1)
+    TweenService:Create(
+        teleportButton,
+        TweenInfo.new(0.1),
+        {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}
+    ):Play()
+end)
+
+-- Анимации для кнопок
+local function setupButtonHover(button)
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+        }):Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        local targetColor = if button == zombieCheckbox and zombieActive then Color3.fromRGB(0, 80, 0)
+                          elseif button == itemCheckbox and itemActive then Color3.fromRGB(0, 80, 80)
+                          elseif button == flashlightCheckbox and flashlightActive then Color3.fromRGB(80, 80, 0)
+                          elseif button == cigaretteCheckbox and cigaretteActive then Color3.fromRGB(60, 60, 60)
+                          elseif button == teleportButton then Color3.fromRGB(50, 50, 60)
+                          elseif button == speedBypassCheckbox and speedBypassActive then Color3.fromRGB(0, 60, 80)
+                          else Color3.fromRGB(50, 50, 60)
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundColor3 = targetColor
+        }):Play()
+    end)
+end
+
+setupButtonHover(zombieCheckbox)
+setupButtonHover(itemCheckbox)
+setupButtonHover(flashlightCheckbox)
+setupButtonHover(cigaretteCheckbox)
+setupButtonHover(teleportButton)
+setupButtonHover(speedBypassCheckbox)
+
+-- Функция для открытия/закрытия меню
+local function toggleMenu()
+    frame.Visible = not frame.Visible
+    UIS.MouseBehavior = frame.Visible and Enum.MouseBehavior.Default or Enum.MouseBehavior.LockCenter
+    UIS.MouseIconEnabled = true
+    
+    -- Анимация кнопки при открытии/закрытии
+    if frame.Visible then
+        TweenService:Create(openButton, TweenInfo.new(0.3), {
+            ImageColor3 = Color3.fromRGB(0, 170, 255),
+            BackgroundColor3 = Color3.fromRGB(0, 50, 80)
+        }):Play()
+    else
+        TweenService:Create(openButton, TweenInfo.new(0.3), {
+            ImageColor3 = Color3.fromRGB(255, 255, 255),
+            BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        }):Play()
+    end
+end
+
+-- Открытие по кнопке
+openButton.MouseButton1Click:Connect(toggleMenu)
+
+-- Открытие по Insert
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.Insert then
+        toggleMenu()
+    end
+end)
+
+-- Обработка новых объектов
+workspace.DescendantAdded:Connect(function(descendant)
+    -- Для зомби
+    if zombieActive and (descendant:FindFirstChild("Humanoid") or string.find(string.lower(descendant.Name), string.lower(ZOMBIE_TAG))) then
+        local head = descendant:FindFirstChild("Head") or descendant.PrimaryPart
+        if head and not head:FindFirstChild("ZombieLabel") then
+            createLabel(head, "ZOMBIE", Color3.new(1, 0, 0), Vector3.new(0, 2.5, 0)).Parent = head
+        end
+    end
+    
+    -- Для предметов
+    if itemActive and (descendant:IsA("BasePart") or descendant:IsA("Model")) then
+        for _, tag in pairs(ITEM_TAGS) do
+            if string.find(string.lower(descendant.Name), string.lower(tag)) then
+                local part = descendant:IsA("Model") and descendant.PrimaryPart or descendant
+                if part and not part:FindFirstChild("ItemLabel") then
+                    createLabel(part, tag:upper(), Color3.new(0, 1, 1)).Parent = part
+                end
+                break
+            end
+        end
+    end
+end)
